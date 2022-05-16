@@ -18,7 +18,7 @@ namespace WebServiceNetCore.Controllers
         [HttpGet("{orden}")]
         public IActionResult Get(int orden)
         {
-            Respuesta oRespuesta = new Respuesta();
+            Respuesta<List<Documentos>> oRespuesta = new Respuesta<List<Documentos>>();
             try
             {
                 using (MySqlConnection conexion = Conexion.getInstance().ConexionDB())
