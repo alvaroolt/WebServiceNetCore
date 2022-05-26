@@ -163,5 +163,29 @@ namespace WebServiceNetCore.Controllers
             }
             return Ok(oRespuesta);
         }
+
+        [HttpDelete("{orden}")]
+        public IActionResult Delete(int orden)
+        {
+            Respuesta<List<Documentos>> oRespuesta = new Respuesta<List<Documentos>>();
+            try
+            {
+                using (MySqlConnection conexion = Conexion.getInstance().ConexionDB())
+                {
+                    MySqlCommand cmd = null;
+                    cmd = new MySqlCommand("delete from documentos where doc_mesa = @orden", conexion);
+                    cmd.Parameters.AddWithValue("@orden", orden);
+                    conexion.Open();
+                    cmd.ExecuteNonQuery();
+                    oRespuesta.Exito = 1;
+                    oRespuesta.Mensaje = "Orden eliminada con éxito";
+                }
+            }
+            catch (Exception e)
+            {
+                oRespuesta.Mensaje = e.Message;
+            }
+            return Ok(oRespuesta);
+        }
     }
 }
