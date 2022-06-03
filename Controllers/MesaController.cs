@@ -164,19 +164,33 @@ namespace WebServiceNetCore.Controllers
             return Ok(oRespuesta);
         }
 
-        [HttpDelete("{orden}")]
-        public IActionResult Delete(int orden)
+        [HttpDelete("{doc_id}")]
+        public IActionResult Delete(int doc_id)
         {
             Respuesta<List<Documentos>> oRespuesta = new Respuesta<List<Documentos>>();
+            MySqlTransaction transaction = default;
+
             try
             {
                 using (MySqlConnection conexion = Conexion.getInstance().ConexionDB())
                 {
-                    MySqlCommand cmd = null;
-                    cmd = new MySqlCommand("delete from documentos where doc_mesa = @orden", conexion);
-                    cmd.Parameters.AddWithValue("@orden", orden);
+                    MySqlCommand cmd = new MySqlCommand();
+
                     conexion.Open();
+                    cmd.Transaction = transaction;
+                    transaction = conexion.BeginTransaction();
+
+                    cmd = new MySqlCommand("delete from ldocumentos where ldoc_doc_id = @ldoc_doc_id", conexion);
+                    cmd.Parameters.AddWithValue("@ldoc_doc_id", doc_id);
                     cmd.ExecuteNonQuery();
+
+                    cmd = new MySqlCommand("delete from documentos where doc_id = @doc_id", conexion);
+                    cmd.Parameters.AddWithValue("@doc_id", doc_id);
+                    cmd.ExecuteNonQuery();
+
+                    transaction.Commit();
+                    conexion.Close();
+
                     oRespuesta.Exito = 1;
                     oRespuesta.Mensaje = "Orden eliminada con éxito";
                 }
@@ -184,6 +198,7 @@ namespace WebServiceNetCore.Controllers
             catch (Exception e)
             {
                 oRespuesta.Mensaje = e.Message;
+                transaction.Rollback();
             }
             return Ok(oRespuesta);
         }

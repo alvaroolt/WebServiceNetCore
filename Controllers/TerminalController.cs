@@ -58,20 +58,26 @@ namespace WebServiceNetCore.Controllers
         public IActionResult Update(Terminal terminal)
         {
             Respuesta<Terminal> oRespuesta = new Respuesta<Terminal>();
+            MySqlTransaction transaction = default;
 
             try
             {
                 using (MySqlConnection conexion = Conexion.getInstance().ConexionDB())
                 {
-                    MySqlCommand cmd = null;
+                    MySqlCommand cmd = new MySqlCommand();
                     MySqlDataReader dr = null;
+
+                    conexion.Open();
+                    cmd.Transaction = transaction;
+                    transaction = conexion.BeginTransaction();
 
                     cmd = new MySqlCommand("update terminal set ter_bloqueado = @bloqueado where ter_id = @id;", conexion);
                     cmd.Parameters.AddWithValue("@bloqueado", terminal.ter_bloqueado);
                     cmd.Parameters.AddWithValue("@id", terminal.ter_id);
-
-                    conexion.Open();
                     cmd.ExecuteNonQuery();
+
+                    transaction.Commit();
+                    conexion.Close();
 
                     oRespuesta.Exito = 1;
                     oRespuesta.Data = terminal;
@@ -80,6 +86,7 @@ namespace WebServiceNetCore.Controllers
             catch (Exception e)
             {
                 oRespuesta.Mensaje = e.Message;
+                transaction.Rollback();
             }
             return Ok(oRespuesta);
         }

@@ -27,8 +27,8 @@ namespace WebServiceNetCore.Models
             MySqlConnection conexion = new MySqlConnection();
 
             //credenciales de la bd
-            //conexion.ConnectionString = "server=192.168.1.185;user=indusoft_factura;password=34026067mM;database=ids_tpv";
-            conexion.ConnectionString = "server=localhost;user=root;password=;database=ids_tpv";
+            conexion.ConnectionString = "server=192.168.1.185;user=indusoft_factura;password=34026067mM;database=ids_tpv";
+            //conexion.ConnectionString = "server=localhost;user=root;password=;database=ids_tpv";
             return conexion;
         }
     }
