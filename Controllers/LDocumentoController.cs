@@ -20,7 +20,7 @@ namespace WebServiceNetCore.Controllers
 
             try
             {
-                using (MySqlConnection conexion = Conexion.getInstance().ConexionDB())
+                using (MySqlConnection conexion = Models.Conexion.getInstance().ConexionDB())
                 {
                     MySqlCommand cmd = new MySqlCommand();
 

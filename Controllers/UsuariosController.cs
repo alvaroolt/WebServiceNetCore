@@ -17,7 +17,7 @@ namespace WebServiceNetCore.Controllers
             Respuesta<Usuarios> oRespuesta = new Respuesta<Usuarios>();
             try
             {
-                using (MySqlConnection conexion = Conexion.getInstance().ConexionDB())
+                using (MySqlConnection conexion = Models.Conexion.getInstance().ConexionDB())
                 {
                     MySqlCommand cmd = null;
                     MySqlDataReader dr = null;

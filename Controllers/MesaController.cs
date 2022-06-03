@@ -15,20 +15,20 @@ namespace WebServiceNetCore.Controllers
     [ApiController]
     public class MesaController : ControllerBase
     {
-        [HttpGet("{orden}")]
-        public IActionResult Get(int orden)
+        [HttpGet("{mesa}/{terminal}")]
+        public IActionResult Get(int mesa, int terminal)
         {
             Respuesta<List<Documentos>> oRespuesta = new Respuesta<List<Documentos>>();
             try
             {
-                using (MySqlConnection conexion = Conexion.getInstance().ConexionDB())
+                using (MySqlConnection conexion = Models.Conexion.getInstance().ConexionDB())
                 {
                     MySqlCommand cmd = null;
                     MySqlDataReader dr = null;
                     List<Documentos> listDocumentos = new List<Documentos>();
 
                     cmd = new MySqlCommand("SELECT objsalon_orden FROM objetos_salon WHERE OBJSALON_ORDEN = @orden", conexion);
-                    cmd.Parameters.AddWithValue("@orden", orden);
+                    cmd.Parameters.AddWithValue("@orden", mesa);
 
                     //se abre la conexión
                     conexion.Open();
@@ -39,7 +39,7 @@ namespace WebServiceNetCore.Controllers
                         //instrucción a ejecutar en la bd
                         cmd = new MySqlCommand("SELECT doc.*,ldoc.*,objsalon_orden FROM (objetos_salon as os LEFT join documentos AS doc ON os.OBJSALON_ORDEN = doc.DOC_MESA) LEFT JOIN ldocumentos AS LDOC ON doc.DOC_ID = LDOC.LDOC_DOC_ID WHERE os.OBJSALON_ORDEN = @orden AND doc.DOC_SERIE = 'MESA'", conexion);
                         //se le asigna el valor a @orden
-                        cmd.Parameters.AddWithValue("@orden", orden);
+                        cmd.Parameters.AddWithValue("@orden", mesa);
 
                         //se obtiene cada usuario con sus valores, y se les añade a la lista de usuarios
                         int cont = 0;
@@ -144,12 +144,30 @@ namespace WebServiceNetCore.Controllers
                         }
                         if (cont == 0)
                         {
-                            objDocumento.doc_mesa = orden;
+                            objDocumento.doc_mesa = mesa;
                             oRespuesta.Mensaje = "La mesa está vacía";
                         }
-                        listDocumentos.Add(objDocumento);
-                        oRespuesta.Exito = 1;
-                        oRespuesta.Data = listDocumentos;
+                        if (objDocumento.doc_bloqueado == 1 && objDocumento.doc_terminal != terminal)
+                        {
+                            oRespuesta.Exito = 0;
+                            oRespuesta.Data = null;
+                            oRespuesta.Mensaje = "La mesa está bloqueada";
+                        }
+                        else
+                        {
+                            objDocumento.doc_bloqueado = 1;
+                            oRespuesta.Mensaje = objDocumento.actualizar();
+                            if (oRespuesta.Mensaje.Length == 0)
+                            {
+                                listDocumentos.Add(objDocumento);
+                                oRespuesta.Exito = 1;
+                                oRespuesta.Data = listDocumentos;
+                            }
+                            else
+                            {
+                                oRespuesta.Exito = 0;
+                            }
+                        }
                     }
                     else
                     {
@@ -172,7 +190,7 @@ namespace WebServiceNetCore.Controllers
 
             try
             {
-                using (MySqlConnection conexion = Conexion.getInstance().ConexionDB())
+                using (MySqlConnection conexion = Models.Conexion.getInstance().ConexionDB())
                 {
                     MySqlCommand cmd = new MySqlCommand();
 
@@ -193,6 +211,42 @@ namespace WebServiceNetCore.Controllers
 
                     oRespuesta.Exito = 1;
                     oRespuesta.Mensaje = "Orden eliminada con éxito";
+                }
+            }
+            catch (Exception e)
+            {
+                oRespuesta.Mensaje = e.Message;
+                transaction.Rollback();
+            }
+            return Ok(oRespuesta);
+        }
+
+        [HttpPut]
+        public IActionResult Update(Documentos documento)
+        {
+            Respuesta<Documentos> oRespuesta = new Respuesta<Documentos>();
+            MySqlTransaction transaction = default;
+
+            try
+            {
+                using (MySqlConnection conexion = Models.Conexion.getInstance().ConexionDB())
+                {
+                    MySqlCommand cmd = new MySqlCommand();
+
+                    conexion.Open();
+                    cmd.Transaction = transaction;
+                    transaction = conexion.BeginTransaction();
+
+                    cmd = new MySqlCommand("update documentos set doc_bloqueado = @bloqueado where doc_id = @id;", conexion);
+                    cmd.Parameters.AddWithValue("@bloqueado", documento.doc_bloqueado);
+                    cmd.Parameters.AddWithValue("@id", documento.doc_id);
+                    cmd.ExecuteNonQuery();
+
+                    transaction.Commit();
+                    conexion.Close();
+
+                    oRespuesta.Exito = 1;
+                    oRespuesta.Data = documento;
                 }
             }
             catch (Exception e)

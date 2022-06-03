@@ -20,7 +20,7 @@ namespace WebServiceNetCore.Controllers
             Respuesta<List<Familias_art>> oRespuesta = new Respuesta<List<Familias_art>>();
             try
             {
-                using (MySqlConnection conexion = Conexion.getInstance().ConexionDB())
+                using (MySqlConnection conexion = Models.Conexion.getInstance().ConexionDB())
                 {
                     MySqlCommand cmd = null;
                     MySqlDataReader dr = null;
