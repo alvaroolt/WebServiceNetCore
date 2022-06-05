@@ -6,7 +6,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using WebServiceApiRest.Models;
 using WebServiceApiRest.Models.Response;
-using WebServiceNetCore.Models;
 
 namespace WebServiceNetCore.Controllers
 {
@@ -20,7 +19,7 @@ namespace WebServiceNetCore.Controllers
             Respuesta<List<Terminal>> oRespuesta = new Respuesta<List<Terminal>>();
             try
             {
-                using (MySqlConnection conexion = Models.Conexion.getInstance().ConexionDB())
+                using (MySqlConnection conexion = Conexion.getInstance().ConexionDB())
                 {
                     MySqlCommand cmd = null;
                     MySqlDataReader dr = null;
@@ -62,7 +61,7 @@ namespace WebServiceNetCore.Controllers
 
             try
             {
-                using (MySqlConnection conexion = Models.Conexion.getInstance().ConexionDB())
+                using (MySqlConnection conexion = Conexion.getInstance().ConexionDB())
                 {
                     MySqlCommand cmd = new MySqlCommand();
 
