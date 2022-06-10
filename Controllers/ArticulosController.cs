@@ -13,30 +13,41 @@ namespace WebServiceNetCore.Controllers
     [ApiController]
     public class ArticulosController : ControllerBase
     {
+        // SOLICITUD GET PARA OBTENER LOS ARTÍCULOS SEGÚN EL ID DE CATEGORÍA/FAMILIA
         [HttpGet("{idFam}")]
         public IActionResult Get(int idFam)
         {
+            // Get devuelve una instancia de Respuesta que trabaja con Lista de articulos,
+            // en la que se incluye si hubo éxito, mensaje de error, y datos
             Respuesta<List<Articulos>> oRespuesta = new Respuesta<List<Articulos>>();
             try
             {
+                //Conexión a la BD
                 using (MySqlConnection conexion = Conexion.getInstance().ConexionDB())
                 {
                     MySqlCommand cmd = null;
                     MySqlDataReader dr = null;
+
+                    // Lista de artículos que recibirá oRespuesta en Data, para enviarse al cliente
                     List<Articulos> listArticulos = new List<Articulos>();
 
+                    // la consulta obtiene todos los datos de artículos en los que coincida con el id de familia solicitado
                     cmd = new MySqlCommand("SELECT * FROM articulos WHERE art_fam = @idFam", conexion);
                     cmd.Parameters.AddWithValue("@idFam", idFam);
 
+                    // se abre la conexión
                     conexion.Open();
                     dr = cmd.ExecuteReader();
 
+                    // si el DataReader tiene algo para leer
                     if (dr.Read())
                     {
                         while (dr.Read())
                         {
+                            // instancia de articulo que se añade a la instancia de lista de articulos
                             Articulos objarticulo = new Articulos();
 
+                            // campos de articulo
                             objarticulo.art_id = Convert.ToInt32(dr["art_id"].ToString());
                             objarticulo.art_nom = dr["art_nom"].ToString();
                             objarticulo.art_orden = Convert.ToInt32(dr["art_orden"].ToString());
@@ -58,20 +69,25 @@ namespace WebServiceNetCore.Controllers
                             objarticulo.art_inc_comb = Convert.ToDouble(dr["art_inc_comb"].ToString());
                             objarticulo.art_prn_auxiliar2 = dr["art_prn_auxiliar2"].ToString();
 
+                            // se añade la instancia de articulo a la instancia de lista de articulos
                             listArticulos.Add(objarticulo);
                         }
 
+                        // hubo éxito
                         oRespuesta.Exito = 1;
+                        // la instancia de respuesta obtiene la lista de artículos en Data
                         oRespuesta.Data = listArticulos;
                     }
                     else
                     {
+                        // no hubo éxito porque se encuentra el articulo en la BD
                         oRespuesta.Mensaje = "No existe el artículo";
                     }
                 }
             }
             catch (Exception e)
             {
+                // la instancia de respuesta obtiene 
                 oRespuesta.Mensaje = e.Message;
             }
             return Ok(oRespuesta);

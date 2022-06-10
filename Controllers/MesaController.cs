@@ -35,9 +35,9 @@ namespace WebServiceNetCore.Controllers
 
                     if (dr.Read())
                     {
-                        //instrucción a ejecutar en la bd
-                        cmd = new MySqlCommand("SELECT doc.*,ldoc.*,objsalon_orden FROM (objetos_salon as os LEFT join documentos AS doc ON os.OBJSALON_ORDEN = doc.DOC_MESA) LEFT JOIN ldocumentos AS LDOC ON doc.DOC_ID = LDOC.LDOC_DOC_ID WHERE os.OBJSALON_ORDEN = @orden AND doc.DOC_SERIE = 'MESA'", conexion);
-                        //se le asigna el valor a @orden
+                        // carga el documento y sus lineas
+                        cmd = new MySqlCommand("SELECT doc.*,ldoc.*,objsalon_orden FROM (objetos_salon as os LEFT join documentos AS doc ON os.OBJSALON_ORDEN = doc.DOC_MESA) LEFT JOIN ldocumentos AS LDOC ON doc.DOC_ID = LDOC.LDOC_DOC_ID WHERE os.OBJSALON_ORDEN = @orden AND doc.DOC_SERIE = 'MESA' ORDER BY ldoc_linea DESC", conexion);
+                        //se le asigna el valor de mesa a @orden
                         cmd.Parameters.AddWithValue("@orden", mesa);
 
                         //se obtiene cada usuario con sus valores, y se les añade a la lista de usuarios
@@ -143,19 +143,20 @@ namespace WebServiceNetCore.Controllers
                         }
                         if (cont == 0)
                         {
-                            objDocumento.doc_mesa = mesa;
-                            oRespuesta.Mensaje = "La mesa está vacía";
+                            //objDocumento.doc_mesa = mesa;
+                            objDocumento.crearCabeceraDocumento(mesa, terminal);
+                            if (objDocumento.doc_id == 0)
+                            {
+                                oRespuesta.Mensaje = "Error al crear la mesa";
+                            }
+                            //oRespuesta.Mensaje = "La mesa está vacía";
                         }
-                        if (objDocumento.doc_bloqueado == 1 && objDocumento.doc_terminal != terminal)
+                        if (objDocumento.doc_bloqueado == 0)
                         {
-                            oRespuesta.Exito = 0;
-                            oRespuesta.Data = null;
-                            oRespuesta.Mensaje = "La mesa está bloqueada";
-                        }
-                        else
-                        {
+                            objDocumento.doc_terminal = terminal;
                             objDocumento.doc_bloqueado = 1;
-                            oRespuesta.Mensaje = objDocumento.actualizar();
+                            oRespuesta.Mensaje = objDocumento.actualizar(null);
+
                             if (oRespuesta.Mensaje.Length == 0)
                             {
                                 listDocumentos.Add(objDocumento);
@@ -165,6 +166,21 @@ namespace WebServiceNetCore.Controllers
                             else
                             {
                                 oRespuesta.Exito = 0;
+                            }
+                        }
+                        else
+                        {
+                            if (objDocumento.doc_terminal == terminal)
+                            {
+                                listDocumentos.Add(objDocumento);
+                                oRespuesta.Exito = 1;
+                                oRespuesta.Data = listDocumentos;
+                            }
+                            else
+                            {
+                                oRespuesta.Exito = 0;
+                                oRespuesta.Data = null;
+                                oRespuesta.Mensaje = "La mesa está bloqueada por el terminal nº" + objDocumento.doc_terminal;
                             }
                         }
                     }
