@@ -2,8 +2,6 @@
 using MySql.Data.MySqlClient;
 using System;
 using System.Collections;
-using System.Collections.Generic;
-using System.Data;
 using WebServiceApiRest.Models;
 using WebServiceApiRest.Models.Response;
 
@@ -14,6 +12,9 @@ namespace WebServiceNetCore.Controllers
     public class LDocumentoController : ControllerBase
     {
 
+        // HTTP POST de ldocumentos según un ArrayList con una serie de datos (id del artículo, número de mesa, terminal).
+        // Devuelve una instancia de la clase Respuesta en la que se almacena si hubo éxito en el oRespuesta.Exito y en el oRespuesta.Mensaje.
+        // En caso de error, se almacena en oRespuesta.Mensaje el mensaje de error.
         [HttpPost]
         public IActionResult Add(ArrayList paramList) // int idArticulo, int numMesa
         {
@@ -21,8 +22,10 @@ namespace WebServiceNetCore.Controllers
             int numMesa = 0;
             int idTerminal = 0;
 
+            // si la condición se cumple, significa que arraylist ha traido los datos correctamente
             if (paramList.Count > 0)
             {
+                // se asignan los datos del arraylist a variables más manejables
                 idArticulo = Convert.ToInt32(Newtonsoft.Json.JsonConvert.DeserializeObject(paramList[0].ToString()));
                 numMesa = Convert.ToInt32(Newtonsoft.Json.JsonConvert.DeserializeObject(paramList[1].ToString()));
                 idTerminal = Convert.ToInt32(Newtonsoft.Json.JsonConvert.DeserializeObject(paramList[2].ToString()));
@@ -33,12 +36,14 @@ namespace WebServiceNetCore.Controllers
 
             try
             {
-                int tarifa = getTarifaByMesa(numMesa);
-                Articulos objarticulo = getArticuloParaAdd(idArticulo, tarifa);
-                double ivaArticulo = getIvaArticulo(objarticulo);
-                int idDocumento = getIdDocumentoByMesa(numMesa);
+                int tarifa = getTarifaByMesa(numMesa); // se obtiene la tarifa de la mesa y se almacena en una variable
+                Articulos objarticulo = getArticuloParaAdd(idArticulo, tarifa); // se obtiene el objeto del artículo que se va a añadir
+                double ivaArticulo = getIvaArticulo(objarticulo); // se obtiene el iva del artículo que se va a añadir
+                int idDocumento = getIdDocumentoByMesa(numMesa); // se obtiene el id del documento al que se va a añadir ldocumento
 
+                // instancia de documento
                 Documentos objdocumento = new Documentos();
+                // asignamos a objdocumento los datos del documento según idDocumento
                 objdocumento = objdocumento.getDocumento(idDocumento);
 
                 using (MySqlConnection conexion = Conexion.getInstance().ConexionDB())
@@ -49,6 +54,7 @@ namespace WebServiceNetCore.Controllers
                     cmd.Transaction = transaction;
                     transaction = conexion.BeginTransaction();
 
+                    // se asignan los datos a objldocumento
                     Ldocumentos objldocumento = new Ldocumentos();
                     objldocumento.ldoc_doc_id = idDocumento;
                     objldocumento.ldoc_tipo = "A";
@@ -69,6 +75,7 @@ namespace WebServiceNetCore.Controllers
                     objldocumento.ldoc_err_prn = 1;
                     objldocumento.ldoc_usuario = 0;
 
+                    // sql que inserta los datos de objldocumento a la tabla ldocumentos
                     string sCommand = String.Format("INSERT INTO LDOCUMENTOS (LDOC_DOC_ID, LDOC_TIPO, LDOC_LINEA, LDOC_ART_ID, LDOC_DESCRIPCION, " +
                         "LDOC_CANTIDAD, LDOC_PVP, LDOC_DTO, LDOC_CDTO, LDOC_IMPORTE, LDOC_IMPORTE_PVP, LDOC_IVA, LDOC_CIVA, LDOC_TIPO_IVA,LDOC_CANT_PRN," +
                         "LDOC_TER_ID,LDOC_ERR_PRN,LDOC_USUARIO)  VALUES({0}, '{1}', {2}, {3}, '{4}', {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13},{14}," +
@@ -78,13 +85,9 @@ namespace WebServiceNetCore.Controllers
                     cmd = new MySqlCommand(sCommand, conexion);
                     cmd.ExecuteNonQuery();
 
-                    if (idDocumento == 0)
-                    {
-                        //objdocumento.listdoc = new List<Ldocumentos>();
-                        //objdocumento.listdoc.Add(objldocumento);
-                        //objdocumento.
-                    }
-                    else
+                    // en caso de que tengamos idDocumento válido, se recalcula el precio del documento, ya que se ha añadido
+                    // un nuevo artículo
+                    if (idDocumento != 0)
                     {
                         objdocumento.recalcularPrecio(idDocumento, objldocumento.ldoc_importe_pvp, objarticulo.art_tipo_iva, ivaArticulo, cmd);
                     }
@@ -105,6 +108,8 @@ namespace WebServiceNetCore.Controllers
             return Ok(oRespuesta);
         }
 
+        // getTarifaByMesa() obtiene la tarifa que se ha asignado a una mesa concreta. Este dato es necesario a la hora
+        // de calcular el precio de ldocumento
         private int getTarifaByMesa(int numMesa)
         {
             int tarifa = 1;
@@ -120,15 +125,16 @@ namespace WebServiceNetCore.Controllers
 
                     cmd = new MySqlCommand("SELECT OBJSALON_N_SALON from objetos_salon where OBJSALON_ORDEN=@numMesa", conexion);
                     cmd.Parameters.AddWithValue("@numMesa", numMesa);
-                    //numSalon = cmd.ExecuteNonQuery();
 
                     dr = cmd.ExecuteReader();
 
                     if (dr.Read())
                     {
+                        // se obtiene el número del salón en el que se encuentra la mesa y se almacena en numSalon
                         numSalon = Convert.ToInt32(dr["OBJSALON_N_SALON"].ToString());
                     }
 
+                    // se obtiene los datos de la tabla configuración
                     cmd = new MySqlCommand("SELECT * FROM configuracion WHERE config_id = 1", conexion);
                     dr.Close();
 
@@ -136,13 +142,15 @@ namespace WebServiceNetCore.Controllers
 
                     if (dr.Read())
                     {
+                        // se obtiene la tarifa del salón según el número de salón obtenido anteriormente, y se almacena en una variable
                         tarifa = Convert.ToInt32(dr["CONFIG_TARIFA_SALON" + numSalon].ToString());
+
+                        // en el caso de que la tarifa fuese 0, se asigna 1 (para evitar posibles errores en la BD)
                         if (tarifa == 0)
                         {
                             tarifa = 1;
                         }
                     }
-
                     conexion.Close();
                 }
             }
@@ -154,8 +162,11 @@ namespace WebServiceNetCore.Controllers
             return tarifa;
         }
 
+        // getArticuloParaAdd() devuelve un objeto artículo según su id y su tarifa. Este artículo obtenido será
+        // el que se añadirá a ldocumento
         private Articulos getArticuloParaAdd(int idArticulo, int idTarifa)
         {
+
             Articulos objarticulo = new Articulos();
 
             try
@@ -167,16 +178,15 @@ namespace WebServiceNetCore.Controllers
 
                     conexion.Open();
 
+                    // se obtiene datos del artículo y su tarifa
                     cmd = new MySqlCommand("SELECT articulos.ART_ID, articulos.ART_NOM, articulos.ART_TIPO_IVA ,ltarifas.LTARIFA_PVP FROM articulos INNER JOIN ltarifas ON articulos.ART_ID = ltarifas.LTARIFA_ART WHERE articulos.ART_ID = @idArticulo AND ltarifas.LTARIFA_ID = @idTarifa", conexion);
                     cmd.Parameters.AddWithValue("@idArticulo", idArticulo);
                     cmd.Parameters.AddWithValue("@idTarifa", idTarifa);
-                    //cmd.Parameters.AddWithValue("@idTarifa", idTarifa);
 
                     dr = cmd.ExecuteReader();
 
                     if (dr.Read())
                     {
-                        //pvp = Convert.ToDouble(dr["LTARIFA_PVP"].ToString());
                         objarticulo.art_id = idArticulo;
                         objarticulo.art_nom = dr["art_nom"].ToString();
                         objarticulo.art_tipo_iva = Convert.ToInt32(dr["art_tipo_iva"].ToString());
@@ -195,6 +205,7 @@ namespace WebServiceNetCore.Controllers
             return objarticulo;
         }
 
+        // getIvaArticulo() devuelve el iva del artículo que se le pasa, necesario más adelante para calcular el precio
         private double getIvaArticulo(Articulos articulo)
         {
             double ivaArticulo = 0;
@@ -210,12 +221,14 @@ namespace WebServiceNetCore.Controllers
 
                     conexion.Open();
 
+                    // sql que obtiene todos los ivas diferentes que se pueden aplicar en la empresa
                     cmd = new MySqlCommand("SELECT empresa.EMP_IVA, tipo_iva.TIVA_ID, tipo_iva.TIVA_IVA1, tipo_iva.TIVA_IVA2, tipo_iva.TIVA_IVA3, tipo_iva.TIVA_IVA4 FROM empresa INNER JOIN tipo_iva ON empresa.EMP_IVA = tipo_iva.TIVA_ID WHERE empresa.EMP_ID = 1; ", conexion);
 
                     dr = cmd.ExecuteReader();
 
                     if (dr.Read())
                     {
+                        // según el tipo de iva que tenga el artículo (normal, reducido...), ivaArticulo recibe un valor u otro
                         switch (tipoIvaArticulo)
                         {
                             case 0:
@@ -242,8 +255,10 @@ namespace WebServiceNetCore.Controllers
             return ivaArticulo;
         }
 
+        // getIdDocumentoByMesa() devuelve el id del documento que está asociado a una mesa
         private int getIdDocumentoByMesa(int numMesa)
         {
+
             int idDocumento = 0;
 
             try
@@ -256,6 +271,7 @@ namespace WebServiceNetCore.Controllers
 
                     conexion.Open();
 
+                    // sql que obtiene todos los datos del documento de la mesa elegida
                     cmd = new MySqlCommand("SELECT * FROM documentos WHERE doc_mesa = @numMesa AND doc_serie = 'MESA'", conexion);
                     cmd.Parameters.AddWithValue("@numMesa", numMesa);
 
@@ -275,6 +291,8 @@ namespace WebServiceNetCore.Controllers
             return idDocumento;
         }
 
+        // getUltimaLinea() obtiene el número en el que se ubica la última línea del documento.
+        // Necesario más adelante para saber dónde ubicar el nuevo ldocumento.
         public static int getUltimaLinea(int idDocumento)
         {
             MySqlCommand cmd = new MySqlCommand();
@@ -299,6 +317,9 @@ namespace WebServiceNetCore.Controllers
             }
         }
 
+        // HTTP DELETE de ldocumentos según su identificador. Devuelve una instancia de la clase Respuesta en la que
+        // se almacena si hubo éxito en el oRespuesta.Exito y en el oRespuesta.Mensaje (mensaje de hubo éxito).
+        //  En caso de error, se almacena en oRespuesta.Mensaje el mensaje de error.
         [HttpDelete("{idLDocumento:int}/{idArticulo:int}/{numMesa:int}")]
         public IActionResult Delete(int idLDocumento, int idArticulo, int numMesa)
         {
@@ -306,6 +327,8 @@ namespace WebServiceNetCore.Controllers
             Respuesta<Ldocumentos> oRespuesta = new Respuesta<Ldocumentos>();
             MySqlTransaction transaction = default;
 
+            // se obtiene tarifa, artículo, iva del artículo e identificador del documento al que pertenece
+            // el ldocumento a borrar para poder recalcular el precio total del documento
             int tarifa = getTarifaByMesa(numMesa);
             Articulos objarticulo = getArticuloParaAdd(idArticulo, tarifa);
             double ivaArticulo = getIvaArticulo(objarticulo);
@@ -331,6 +354,7 @@ namespace WebServiceNetCore.Controllers
                     cmd.Parameters.AddWithValue("@id", idLDocumento);
                     cmd.ExecuteNonQuery();
 
+                    // una vez se ha eliminado el ldocumento, se recalcula el precio del documento al que pertenecía
                     objdocumento.recalcularPrecio(idDocumento, -objldocumento.ldoc_importe_pvp, objarticulo.art_tipo_iva, ivaArticulo, cmd);
 
                     transaction.Commit();
@@ -349,6 +373,10 @@ namespace WebServiceNetCore.Controllers
             return Ok(oRespuesta);
         }
 
+        // HTTP PUT de ldocumentos. Devuelve una instancia de la clase Respuesta en la que
+        // se almacena la información modificada del ldocumento en el oRespuesta.Data. En caso de error, 
+        // se almacena en oRespuesta.Mensaje el mensaje de error.
+        // se utiliza PUT en ldocumentos principalmente para modificar su precio y su cantidad.
         [HttpPut]
         public IActionResult Update(Ldocumentos ldocumento)
         {
@@ -362,21 +390,22 @@ namespace WebServiceNetCore.Controllers
                     MySqlCommand cmd = new MySqlCommand();
 
                     conexion.Open();
-                    cmd.Transaction = transaction;
-                    transaction = conexion.BeginTransaction();
 
                     Documentos objdocumento = new Documentos();
                     objdocumento = objdocumento.getDocumento((int)ldocumento.ldoc_doc_id);
+                    objdocumento.recalcularPrecio(Convert.ToInt32(ldocumento.ldoc_doc_id), -ldocumento.ldoc_importe_pvp, ldocumento.ldoc_tipo_iva, ldocumento.ldoc_civa, null);
 
-                    objdocumento.recalcularPrecio(Convert.ToInt32(ldocumento.ldoc_doc_id), -ldocumento.ldoc_importe_pvp, ldocumento.ldoc_tipo_iva, ldocumento.ldoc_civa, cmd);
+                    cmd.Transaction = transaction;
+                    transaction = conexion.BeginTransaction();
 
-                    double importePvp = Math.Round(ldocumento.ldoc_importe_pvp * ldocumento.ldoc_cantidad);
+                    double pvp = Math.Round(ldocumento.ldoc_pvp, 5);
+                    double importePvp = Math.Round(ldocumento.ldoc_pvp * ldocumento.ldoc_cantidad, 5);
                     double importe = Math.Round(importePvp / (1 + ldocumento.ldoc_iva / 100), 5);
                     double civa = Math.Round(importePvp - importe, 5);
                     double cantidad = ldocumento.ldoc_cantidad;
 
                     cmd = new MySqlCommand("update ldocumentos set ldoc_pvp = @pvp, ldoc_importe_pvp = @importePvp, ldoc_importe = @importe, ldoc_civa = @civa, ldoc_cantidad = @cantidad, ldoc_ter_id = @terminal where ldoc_id = @id;", conexion);
-                    cmd.Parameters.AddWithValue("@pvp", Math.Round(ldocumento.ldoc_importe_pvp, 5));
+                    cmd.Parameters.AddWithValue("@pvp", pvp);
                     cmd.Parameters.AddWithValue("@importePvp", importePvp);
                     cmd.Parameters.AddWithValue("@importe", importe);
                     cmd.Parameters.AddWithValue("@civa", civa);
@@ -387,7 +416,7 @@ namespace WebServiceNetCore.Controllers
 
                     transaction.Commit();
 
-                    objdocumento.recalcularPrecio(Convert.ToInt32(ldocumento.ldoc_doc_id), importePvp, ldocumento.ldoc_tipo_iva, civa, cmd);
+                    objdocumento.recalcularPrecio(Convert.ToInt32(ldocumento.ldoc_doc_id), importePvp, ldocumento.ldoc_tipo_iva, civa, null);
 
                     conexion.Close();
 

@@ -1,10 +1,7 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using MySql.Data.MySqlClient;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using WebServiceApiRest.Models;
 using WebServiceApiRest.Models.Response;
 
@@ -14,6 +11,10 @@ namespace WebServiceNetCore.Controllers
     [ApiController]
     public class MesaController : ControllerBase
     {
+
+        // HTTP GET de documentos según la mesa. Devuelve una instancia de la clase Respuesta en la que
+        // se almacena la información de la lista de documentos(pedidos) en el oRespuesta.Data. En caso de error, 
+        // se almacena en oRespuesta.Mensaje el mensaje de error.
         [HttpGet("{mesa}/{terminal}")]
         public IActionResult Get(int mesa, int terminal)
         {
@@ -40,9 +41,10 @@ namespace WebServiceNetCore.Controllers
                         //se le asigna el valor de mesa a @orden
                         cmd.Parameters.AddWithValue("@orden", mesa);
 
-                        //se obtiene cada usuario con sus valores, y se les añade a la lista de usuarios
+                        // variable que recoge cuántas filas tiene el documento
                         int cont = 0;
 
+                        // instancia de documento donde se almacenará los datos obtenidos de la consulta
                         Documentos objDocumento = new Documentos();
                         dr.Close();
                         dr = cmd.ExecuteReader();
@@ -51,12 +53,15 @@ namespace WebServiceNetCore.Controllers
                         {
                             cont++;
                             string cadena = dr["doc_id"].ToString();
+                            // si no hay id, se le asigna 0
                             if (cadena == "")
                             {
                                 objDocumento.doc_id = 0;
                             }
                             else
                             {
+                                // si cont es 1, significa que nos encontramos en la cabecera del documento, por lo que
+                                // asignamos los datos de Documentos
                                 if (cont == 1)
                                 {
                                     objDocumento.doc_id = Convert.ToInt64(dr["doc_id"].ToString());
@@ -105,6 +110,7 @@ namespace WebServiceNetCore.Controllers
                                 }
 
                                 string cadena2 = dr["ldoc_id"].ToString();
+                                // comprueba que ldoc_id no esté vacío para rellenar los datos de la lista de LDocumentos
                                 if (cadena2 != "")
                                 {
                                     Ldocumentos ldoc = new Ldocumentos();
@@ -137,26 +143,30 @@ namespace WebServiceNetCore.Controllers
                                     ldoc.ldoc_err_prn = Convert.ToInt32(dr["ldoc_err_prn"].ToString());
                                     ldoc.ldoc_usuario = Convert.ToInt32(dr["ldoc_usuario"].ToString());
 
+                                    // se añade las filas a la instancia de Documentos
                                     objDocumento.listdoc.Add(ldoc);
                                 }
                             }
                         }
+                        // que cont sea igual a 0 equivale a que el documento no tiene cabecera, por lo tanto se procede a crear
                         if (cont == 0)
                         {
-                            //objDocumento.doc_mesa = mesa;
                             objDocumento.crearCabeceraDocumento(mesa, terminal);
                             if (objDocumento.doc_id == 0)
                             {
                                 oRespuesta.Mensaje = "Error al crear la mesa";
                             }
-                            //oRespuesta.Mensaje = "La mesa está vacía";
                         }
+                        // si la mesa está desbloqueada, el terminal que ha accedido se vuelve el terminal de la mesa, se bloquea
+                        // y se actualiza el documento
                         if (objDocumento.doc_bloqueado == 0)
                         {
                             objDocumento.doc_terminal = terminal;
                             objDocumento.doc_bloqueado = 1;
                             oRespuesta.Mensaje = objDocumento.actualizar(null);
 
+                            // que mensaje no tenga texto significa que no hay mensaje de error, por lo tanto hubo éxito
+                            // en la operación
                             if (oRespuesta.Mensaje.Length == 0)
                             {
                                 listDocumentos.Add(objDocumento);
@@ -170,6 +180,8 @@ namespace WebServiceNetCore.Controllers
                         }
                         else
                         {
+                            // si el terminal con el que se accede es el mismo que el terminal de la mesa, permite continuar
+                            // la operación independientemente de si se encuentre la mesa bloqueada o no
                             if (objDocumento.doc_terminal == terminal)
                             {
                                 listDocumentos.Add(objDocumento);
@@ -197,6 +209,9 @@ namespace WebServiceNetCore.Controllers
             return Ok(oRespuesta);
         }
 
+        // HTTP DELETE de documentos según su identificador. Devuelve una instancia de la clase Respuesta en la que
+        // se almacena si hubo éxito en el oRespuesta.Exito y en el oRespuesta.Mensaje (mensaje de hubo éxito).
+        //  En caso de error, se almacena en oRespuesta.Mensaje el mensaje de error.
         [HttpDelete("{doc_id}")]
         public IActionResult Delete(int doc_id)
         {
@@ -213,10 +228,12 @@ namespace WebServiceNetCore.Controllers
                     cmd.Transaction = transaction;
                     transaction = conexion.BeginTransaction();
 
+                    // borra los ldocumentos asociados al documento
                     cmd = new MySqlCommand("delete from ldocumentos where ldoc_doc_id = @ldoc_doc_id", conexion);
                     cmd.Parameters.AddWithValue("@ldoc_doc_id", doc_id);
                     cmd.ExecuteNonQuery();
 
+                    // borra el documento
                     cmd = new MySqlCommand("delete from documentos where doc_id = @doc_id", conexion);
                     cmd.Parameters.AddWithValue("@doc_id", doc_id);
                     cmd.ExecuteNonQuery();
@@ -236,6 +253,9 @@ namespace WebServiceNetCore.Controllers
             return Ok(oRespuesta);
         }
 
+        // HTTP PUT de documentos. Devuelve una instancia de la clase Respuesta en la que
+        // se almacena la información modificada del documento(pedido) en el oRespuesta.Data. En caso de error, 
+        // se almacena en oRespuesta.Mensaje el mensaje de error.
         [HttpPut]
         public IActionResult Update(Documentos documento)
         {
@@ -252,6 +272,7 @@ namespace WebServiceNetCore.Controllers
                     cmd.Transaction = transaction;
                     transaction = conexion.BeginTransaction();
 
+                    // update para bloquear el documento
                     cmd = new MySqlCommand("update documentos set doc_bloqueado = @bloqueado where doc_id = @id;", conexion);
                     cmd.Parameters.AddWithValue("@bloqueado", documento.doc_bloqueado);
                     cmd.Parameters.AddWithValue("@id", documento.doc_id);

@@ -2,8 +2,6 @@
 using MySql.Data.MySqlClient;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using WebServiceApiRest.Models;
 using WebServiceApiRest.Models.Response;
 
@@ -13,6 +11,10 @@ namespace WebServiceNetCore.Controllers
     [ApiController]
     public class TerminalController : ControllerBase
     {
+
+        // HTTP GET de terminal. Devuelve una instancia de la clase Respuesta en la que se almacena la información
+        // de todos los terminales en una lista en el oRespuesta.Data. En caso de error, se almacena en
+        // oRespuesta.Mensaje el mensaje de error.
         [HttpGet]
         public IActionResult Get()
         {
@@ -53,6 +55,8 @@ namespace WebServiceNetCore.Controllers
             return Ok(oRespuesta);
         }
 
+        // HTTP PUT de terminal. Devuelve una instancia de la clase Respuesta en la que se almacena la información
+        // modificada del terminal en oRespuesta.Data. En caso de error, se almacena en oRespuesta.Mensaje el mensaje de error.
         [HttpPut]
         public IActionResult Update(Terminal terminal)
         {

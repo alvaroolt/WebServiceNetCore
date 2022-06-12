@@ -10,6 +10,10 @@ namespace WebServiceNetCore.Controllers
     [ApiController]
     public class UsuariosController : ControllerBase
     {
+
+        // HTTP GET de usuario según contraseña. Devuelve una instancia de la clase Respuesta en la que
+        // se almacena la información del usuario en el oRespuesta.Data. En caso de error, se almacena en
+        // oRespuesta.Mensaje el mensaje de error.
         [HttpGet("{pass}")]
         public IActionResult Get(string pass)
         {

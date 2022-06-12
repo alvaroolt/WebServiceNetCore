@@ -2,8 +2,6 @@
 using MySql.Data.MySqlClient;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using WebServiceApiRest.Models;
 using WebServiceApiRest.Models.Response;
 
@@ -13,7 +11,9 @@ namespace WebServiceNetCore.Controllers
     [ApiController]
     public class ArticulosController : ControllerBase
     {
-        // SOLICITUD GET PARA OBTENER LOS ARTÍCULOS SEGÚN EL ID DE CATEGORÍA/FAMILIA
+        // HTTP GET de artículos según el id de su categoría/familia. Devuelve una instancia de la clase Respuesta en la que
+        // se almacena la información de la lista de artículos en el oRespuesta.Data. En caso de error, se almacena en
+        // oRespuesta.Mensaje el mensaje de error.
         [HttpGet("{idFam}")]
         public IActionResult Get(int idFam)
         {

@@ -2,8 +2,6 @@
 using MySql.Data.MySqlClient;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using WebServiceApiRest.Models;
 using WebServiceApiRest.Models.Response;
 
@@ -13,6 +11,10 @@ namespace WebServiceNetCore.Controllers
     [ApiController]
     public class Familias_artController : ControllerBase
     {
+
+        // HTTP GET de categorías/familias. Devuelve una instancia de la clase Respuesta en la que
+        // se almacena la información de la lista de categorías en el oRespuesta.Data. En caso de error, 
+        // se almacena en oRespuesta.Mensaje el mensaje de error.
         [HttpGet]
         public IActionResult Get()
         {
